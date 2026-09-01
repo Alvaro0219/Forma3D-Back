@@ -1,0 +1,61 @@
+import { S3Client, DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { randomUUID } from 'crypto';
+import { env } from '../config/env.js';
+
+/**
+ * Encapsula toda la interaccion con Cloudflare R2 (S3-compatible):
+ * genera URLs firmadas para subir, borra objetos y arma la URL publica final.
+ * Ningun controller instancia el cliente S3 directamente.
+ * Las imagenes nunca se guardan en Mongo: solo la URL publica se persiste.
+ */
+const s3 = new S3Client({
+  region: 'auto',
+  endpoint: `https://${env.r2AccountId}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: env.r2AccessKeyId,
+    secretAccessKey: env.r2SecretAccessKey
+  }
+});
+
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+// Archivos 3D: los navegadores suelen reportar STL/3MF como octet-stream o vacio,
+// asi que para 'model' se valida por EXTENSION, no por content-type.
+const ALLOWED_MODEL_EXT = new Set(['stl', '3mf']);
+const MAX_SIZE_BYTES = 5 * 1024 * 1024;        // imagenes: 5MB
+const MAX_MODEL_SIZE_BYTES = 50 * 1024 * 1024; // modelos 3D: 50MB
+
+export function buildImageKey(originalName, folder = 'general') {
+  const ext = (originalName.split('.').pop() || 'jpg').toLowerCase();
+  return `${folder}/${randomUUID()}.${ext}`; // nunca usar el nombre original del cliente
+}
+
+/**
+ * Genera la URL firmada para subir a R2.
+ * kind='image' (default): valida content-type de imagen.
+ * kind='model': valida extension STL/3MF (el content-type de estos archivos no es confiable).
+ */
+export async function getUploadUrl(key, contentType, kind = 'image') {
+  if (kind === 'model') {
+    const ext = (key.split('.').pop() || '').toLowerCase();
+    if (!ALLOWED_MODEL_EXT.has(ext)) throw new Error('Tipo de archivo 3D no permitido (solo STL o 3MF)');
+  } else if (!ALLOWED_TYPES.has(contentType)) {
+    throw new Error('Tipo de archivo no permitido');
+  }
+
+  const command = new PutObjectCommand({
+    Bucket: env.r2BucketName,
+    Key: key,
+    ContentType: contentType || 'application/octet-stream'
+  });
+
+  const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 }); // 5 minutos
+  const publicUrl = `${env.r2PublicUrl}/${key}`;
+  return { uploadUrl, publicUrl, key };
+}
+
+export async function deleteImage(key) {
+  await s3.send(new DeleteObjectCommand({ Bucket: env.r2BucketName, Key: key }));
+}
+
+export { MAX_SIZE_BYTES, MAX_MODEL_SIZE_BYTES, ALLOWED_TYPES, ALLOWED_MODEL_EXT };

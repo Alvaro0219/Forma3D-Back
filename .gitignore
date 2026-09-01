@@ -1,0 +1,29 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno — nunca commitear secretos
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Build / temporales
+dist/
+build/
+tmp/
+coverage/
+
+# Uploads locales (si en algún momento probás con storage local antes de migrar a R2)
+uploads/
