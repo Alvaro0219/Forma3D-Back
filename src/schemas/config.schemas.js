@@ -12,7 +12,8 @@ export const updateConfigSchema = Joi.object({
   manoObraDefault: Joi.number().min(0),
   costoEmbalajeDefault: Joi.number().min(0),
   otrosCostosDefault: Joi.number().min(0),
-  margenDefault: Joi.number().min(0).max(99.9),
+  // Markup sobre el costo (no margen bruto sobre precio): sin techo matematico en 100%.
+  margenDefault: Joi.number().min(0),
   categorias: Joi.array().items(Joi.string()),
   unidades: Joi.array().items(Joi.string()),
   whatsappNumero: Joi.string().allow(''),

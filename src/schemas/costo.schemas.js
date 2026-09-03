@@ -12,6 +12,7 @@ export const calcularCostoSchema = Joi.object({
   embalaje: Joi.number().min(0).default(0),
   otros: Joi.number().min(0).default(0),
   modo: Joi.string().valid('margen', 'ganancia').default('margen'),
-  margenDeseado: Joi.number().min(0).max(99.9).default(0),
+  // Markup sobre el costo (no margen bruto sobre precio): sin techo matematico en 100%.
+  margenDeseado: Joi.number().min(0).default(0),
   gananciaDeseada: Joi.number().min(0).default(0)
 });

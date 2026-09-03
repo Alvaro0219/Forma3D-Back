@@ -66,13 +66,19 @@ export function calcularCosto(input = {}) {
   if (modo === 'ganancia') {
     precioSugerido = costoTotal + (Number(gananciaDeseada) || 0);
   } else {
-    // modo margen: precio = costo / (1 - margen/100)
-    const m = Math.min(Math.max(Number(margenDeseado) || 0, 0), 99.9);
-    precioSugerido = m > 0 ? costoTotal / (1 - m / 100) : costoTotal;
+    // modo margen: en este negocio "margen deseado" se entiende como markup
+    // sobre el costo (no como margen bruto sobre precio) — ej. costo $1000 y
+    // margen 100% => precio $2000. Por eso no tiene techo matematico en 100%.
+    const m = Math.max(Number(margenDeseado) || 0, 0);
+    precioSugerido = costoTotal * (1 + m / 100);
   }
 
   const ganancia = precioSugerido - costoTotal;
-  const margen = precioSugerido > 0 ? (ganancia / precioSugerido) * 100 : 0;
+  // En modo margen el % ya es el markup pedido (autoconsistente); en modo ganancia
+  // se informa el margen bruto resultante sobre el precio sugerido.
+  const margen = modo === 'ganancia'
+    ? (precioSugerido > 0 ? (ganancia / precioSugerido) * 100 : 0)
+    : (costoTotal > 0 ? (ganancia / costoTotal) * 100 : 0);
 
   return {
     costoPorGramo: round(costoPorGramo, 4),
