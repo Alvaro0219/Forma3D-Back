@@ -24,11 +24,6 @@ const Archivo3DSchema = new mongoose.Schema({
   descripcion: { type: String },
   notas: { type: String },
 
-  // Datos tecnicos por defecto
-  pesoImpresion: { type: Number, default: 0 },     // gramos
-  tiempoImpresion: { type: Number, default: 0 },   // minutos
-  configuracionImpresion: { type: String, default: '' },
-
   versiones: { type: [VersionSchema], default: [] },
   estado: { type: String, enum: ['activo', 'archivado'], default: 'activo', index: true }
 }, { timestamps: true });

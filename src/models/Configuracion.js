@@ -31,7 +31,7 @@ const ConfiguracionSchema = new mongoose.Schema({
   whatsappNumero: { type: String, default: '' }, // formato internacional sin +, ej. 5493511234567
   plantillaMensaje: {
     type: String,
-    default: 'Hola! Quiero hacer un pedido:\n\n{items}\n\nTotal: {total}\n\nMis datos:\nNombre: {nombre}\nTelefono: {telefono}\nNotas: {notas}'
+    default: 'Hola! Quiero hacer un pedido:\n\n{items}\n\nTotal: {total}\n\nMis datos:\nNombre: {nombre}\nNotas: {notas}'
   },
   mostrarDisponibilidad: { type: Boolean, default: true },
   // Umbral global para mostrar "Pocas unidades" en la tienda (los productos ya no tienen stock minimo).

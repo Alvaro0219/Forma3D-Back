@@ -8,10 +8,7 @@ export const createArchivoSchema = Joi.object({
   producto: Joi.string().allow(null, ''),
   fotos: Joi.array().items(Joi.string()).default([]),
   descripcion: Joi.string().allow(''),
-  notas: Joi.string().allow(''),
-  pesoImpresion: Joi.number().min(0).default(0),
-  tiempoImpresion: Joi.number().min(0).default(0),
-  configuracionImpresion: Joi.string().allow('')
+  notas: Joi.string().allow('')
 });
 
 export const updateArchivoSchema = createArchivoSchema.fork(['nombre'], (s) => s.optional()).min(1);
