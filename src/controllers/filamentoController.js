@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/response.js';
 import { AppError } from '../utils/AppError.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
+import { queryString, containsRegex } from '../utils/queryParams.js';
 import { Filamento } from '../models/Filamento.js';
 import { MovimientoStock } from '../models/MovimientoStock.js';
 import { registrarMovimiento } from '../services/stockService.js';
@@ -9,14 +10,16 @@ import { registrarMovimiento } from '../services/stockService.js';
 export const listFilamentos = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req);
   const filter = {};
-  const q = (req.query.q || '').trim();
+  const q = queryString(req, 'q');
   if (q) filter.$or = [
-    { identificadorBobina: { $regex: q, $options: 'i' } },
-    { marca: { $regex: q, $options: 'i' } },
-    { color: { $regex: q, $options: 'i' } }
+    { identificadorBobina: containsRegex(q) },
+    { marca: containsRegex(q) },
+    { color: containsRegex(q) }
   ];
-  if (req.query.filter_tipo) filter.tipo = req.query.filter_tipo;
-  if (req.query.filter_estado) filter.estado = req.query.filter_estado;
+  const tipo = queryString(req, 'filter_tipo');
+  const estado = queryString(req, 'filter_estado');
+  if (tipo) filter.tipo = tipo;
+  if (estado) filter.estado = estado;
 
   const [items, total] = await Promise.all([
     Filamento.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).populate('proveedor', 'nombre'),

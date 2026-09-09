@@ -2,6 +2,7 @@ import { asyncHandler } from './asyncHandler.js';
 import { ok } from './response.js';
 import { AppError } from './AppError.js';
 import { getPagination, buildPaginatedResponse } from './pagination.js';
+import { queryString, containsRegex } from './queryParams.js';
 
 /**
  * Genera controllers CRUD estandar para una entidad, respetando las convenciones
@@ -12,29 +13,34 @@ import { getPagination, buildPaginatedResponse } from './pagination.js';
  * @param {mongoose.Model} Model
  * @param {object} options
  * @param {string[]} options.searchFields  campos para busqueda ?q= (regex)
- * @param {object}   options.baseFilter    filtro base aplicado a listados
+ * @param {string[]} options.filterFields  campos habilitados para ?filter_campo=valor
  * @param {boolean}  options.softDelete    si true, delete marca isActive=false
  * @param {function} options.populate      array/string para .populate() en list/get
  */
 export function crudController(Model, {
   searchFields = [],
+  filterFields = [],
   softDelete = true,
   populate = null,
   sort = { createdAt: -1 }
 } = {}) {
   const label = Model.modelName;
+  const allowedFilters = new Set(filterFields);
 
   function buildFilter(req) {
     const filter = {};
     if (softDelete && req.query.includeInactive !== 'true') filter.isActive = { $ne: false };
 
-    const q = (req.query.q || '').trim();
+    const q = queryString(req, 'q');
     if (q && searchFields.length) {
-      filter.$or = searchFields.map((f) => ({ [f]: { $regex: q, $options: 'i' } }));
+      filter.$or = searchFields.map((f) => ({ [f]: containsRegex(q) }));
     }
-    // Filtros exactos declarados via ?filter_campo=valor
-    for (const [key, val] of Object.entries(req.query)) {
-      if (key.startsWith('filter_')) filter[key.slice(7)] = val;
+    // Filtros exactos via ?filter_campo=valor. Solo se aceptan los campos declarados
+    // por la entidad y solo con valores escalares: un campo arbitrario dejaria filtrar
+    // por datos internos (costos, margenes) desde cualquier sesion autenticada.
+    for (const field of allowedFilters) {
+      const value = queryString(req, `filter_${field}`);
+      if (value) filter[field] = value;
     }
     return filter;
   }

@@ -24,7 +24,7 @@ const ConfiguracionSchema = new mongoose.Schema({
   margenDefault: { type: Number, default: 60 },       // %
 
   // Catalogos configurables
-  categorias: { type: [String], default: ['Llaveros', 'Decoracion', 'Utilitario', 'Personalizado'] },
+  categorias: { type: [String], default: ['Llaveros', 'Decoración', 'Educación', 'Personalizado', 'Juegos', 'Días Especiales', 'Jarras', 'Pasteleria', 'Varios'] },
   unidades: { type: [String], default: ['unidad', 'g', 'ml', 'm', 'par'] },
 
   // Tienda publica

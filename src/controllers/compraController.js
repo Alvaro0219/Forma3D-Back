@@ -2,16 +2,19 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/response.js';
 import { AppError } from '../utils/AppError.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
+import { queryDate } from '../utils/queryParams.js';
 import { Compra } from '../models/Compra.js';
 import { registrarCompra } from '../services/compraService.js';
 
 export const listCompras = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req);
   const filter = {};
-  if (req.query.desde || req.query.hasta) {
+  const desde = queryDate(req, 'desde');
+  const hasta = queryDate(req, 'hasta');
+  if (desde || hasta) {
     filter.fecha = {};
-    if (req.query.desde) filter.fecha.$gte = new Date(req.query.desde);
-    if (req.query.hasta) filter.fecha.$lte = new Date(req.query.hasta);
+    if (desde) filter.fecha.$gte = desde;
+    if (hasta) filter.fecha.$lte = hasta;
   }
   const [items, total] = await Promise.all([
     Compra.find(filter).sort({ fecha: -1 }).skip(skip).limit(limit).populate('proveedor', 'nombre').lean(),

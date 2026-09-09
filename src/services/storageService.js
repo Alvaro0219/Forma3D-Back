@@ -2,6 +2,7 @@ import { S3Client, DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import { env } from '../config/env.js';
+import { AppError } from '../utils/AppError.js';
 
 /**
  * Encapsula toda la interaccion con Cloudflare R2 (S3-compatible):
@@ -34,22 +35,38 @@ export function buildImageKey(originalName, folder = 'general') {
  * Genera la URL firmada para subir a R2.
  * kind='image' (default): valida content-type de imagen.
  * kind='model': valida extension STL/3MF (el content-type de estos archivos no es confiable).
+ *
+ * `size` se firma como ContentLength: R2 rechaza la subida si el archivo real no pesa
+ * exactamente eso. Sin esto los limites de 5MB/50MB son solo una validacion del
+ * navegador, y quien tenga un presign puede subir un archivo de cualquier tamaño.
  */
-export async function getUploadUrl(key, contentType, kind = 'image') {
+export async function getUploadUrl(key, contentType, kind = 'image', size = 0) {
+  const maxSize = kind === 'model' ? MAX_MODEL_SIZE_BYTES : MAX_SIZE_BYTES;
+
   if (kind === 'model') {
     const ext = (key.split('.').pop() || '').toLowerCase();
-    if (!ALLOWED_MODEL_EXT.has(ext)) throw new Error('Tipo de archivo 3D no permitido (solo STL o 3MF)');
+    if (!ALLOWED_MODEL_EXT.has(ext)) {
+      throw new AppError('Tipo de archivo 3D no permitido (solo STL o 3MF)', 400, 'INVALID_FILE_TYPE');
+    }
   } else if (!ALLOWED_TYPES.has(contentType)) {
-    throw new Error('Tipo de archivo no permitido');
+    throw new AppError('Tipo de archivo no permitido', 400, 'INVALID_FILE_TYPE');
+  }
+
+  if (!size || size > maxSize) {
+    throw new AppError(`El archivo supera el maximo de ${Math.round(maxSize / 1024 / 1024)}MB`, 400, 'FILE_TOO_LARGE');
   }
 
   const command = new PutObjectCommand({
     Bucket: env.r2BucketName,
     Key: key,
-    ContentType: contentType || 'application/octet-stream'
+    ContentType: contentType || 'application/octet-stream',
+    ContentLength: size
   });
 
-  const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 }); // 5 minutos
+  const uploadUrl = await getSignedUrl(s3, command, {
+    expiresIn: 300, // 5 minutos
+    signableHeaders: new Set(['content-length', 'content-type'])
+  });
   const publicUrl = `${env.r2PublicUrl}/${key}`;
   return { uploadUrl, publicUrl, key };
 }

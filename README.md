@@ -32,8 +32,26 @@ Healthcheck: `GET http://localhost:4000/health` → `{ "ok": true }`
 
 ## Variables de entorno
 
-Ver `.env.example`. Críticas en producción: `MONGO_URL`, `JWT_SECRET`, `REFRESH_SECRET`
-(el proceso falla al arrancar si faltan con `NODE_ENV=production`).
+Ver `.env.example`. El proceso **corta al arrancar** si la config es inválida, en cualquier entorno.
+
+- `JWT_SECRET` / `REFRESH_SECRET`: 32+ caracteres y no pueden contener `change_me`.
+  Generarlos con `npm run gen:secrets`. Los de producción van distintos a los de desarrollo.
+- `MONGO_URL`: en producción **debe incluir el nombre de la base** antes de los `?`
+  (`...mongodb.net/impresion3d_prod?...`). Sin él, Mongoose escribe en la base `test`.
+- `CORS_ORIGINS`: obligatoria en producción. Es una lista blanca estricta — un origen
+  que no esté ahí recibe 403. No existe modo "permitir todo".
+- Las variables `R2_*` son obligatorias en producción.
+
+### Checklist de despliegue
+
+1. `npm run gen:secrets` y pegar los dos valores en el entorno del host (no en un archivo commiteado).
+2. `MONGO_URL` apuntando a la base de producción, con un usuario de Mongo propio de esa base.
+3. `CORS_ORIGINS` con el dominio final del frontend, sin barra al final.
+4. `NODE_ENV=production` (activa `trust proxy`, el log `combined` y todas las validaciones estrictas).
+5. `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` con los datos del admin real: se crea
+   en el primer arranque **solo si la colección `users` está vacía**. Después, cambiar la
+   contraseña desde la app (menú de usuario → "Cambiar contraseña") y vaciar esas variables.
+6. Verificar que la base de producción no tenga usuarios de prueba.
 
 **Cloudflare R2 (subida de imágenes/archivos 3D):** `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
 `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`. Son **`.required()` solo en producción**
@@ -66,7 +84,7 @@ src/
 
 | Recurso | Rutas |
 |---|---|
-| Auth | `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`, `*/auth/users` (admin) |
+| Auth | `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`, `PUT /auth/password` (cambio de la propia contraseña), `*/auth/users` (admin) |
 | Dashboard | `GET /dashboard/resumen`, `GET /dashboard/series?dias=30` |
 | Clientes | `GET/POST /clientes`, `GET/PUT/DELETE /clientes/:id` (con historial en el detalle) |
 | Proveedores | `GET/POST /proveedores`, `GET/PUT/DELETE /proveedores/:id` |

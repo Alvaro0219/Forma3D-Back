@@ -42,7 +42,12 @@ export const createUser = asyncHandler(async (req, res) => {
 });
 
 export const updateUser = asyncHandler(async (req, res) => {
-  const user = await User.findByIdAndUpdate(req.params.id, req.validated, { new: true });
-  if (!user) throw new AppError('Usuario no encontrado', 404, 'NOT_FOUND');
-  return ok(res, user.toSafeJSON());
+  return ok(res, await authService.updateUser(req.params.id, req.validated));
+});
+
+/** Cambio de la propia contraseña (cualquier usuario autenticado, sobre su cuenta). */
+export const changePassword = asyncHandler(async (req, res) => {
+  const { actual, nueva } = req.validated;
+  await authService.changePassword(req.user.id, actual, nueva);
+  return ok(res, { message: 'Contraseña actualizada' });
 });

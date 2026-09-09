@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/response.js';
 import { AppError } from '../utils/AppError.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
+import { queryString, containsRegex } from '../utils/queryParams.js';
 import { Producto } from '../models/Producto.js';
 import { Configuracion } from '../models/Configuracion.js';
 
@@ -51,15 +52,19 @@ export const listCatalogo = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req, { defaultLimit: 24, maxLimit: 60 });
   const cfg = await Configuracion.getSingleton();
 
+  // Endpoint publico sin auth: todo lo que venga por query se lee como escalar
+  // y el texto de busqueda se escapa antes de usarse como regex.
   const filter = { visibleEnTienda: true, isActive: { $ne: false } };
-  const q = (req.query.q || '').trim();
+  const q = queryString(req, 'q');
   if (q) filter.$or = [
-    { nombre: { $regex: q, $options: 'i' } },
-    { sku: { $regex: q, $options: 'i' } },
-    { descripcion: { $regex: q, $options: 'i' } }
+    { nombre: containsRegex(q) },
+    { sku: containsRegex(q) },
+    { descripcion: containsRegex(q) }
   ];
-  if (req.query.categoria) filter.categoria = req.query.categoria;
-  if (req.query.material) filter.material = req.query.material;
+  const categoria = queryString(req, 'categoria');
+  const material = queryString(req, 'material');
+  if (categoria) filter.categoria = categoria;
+  if (material) filter.material = material;
 
   const [items, total] = await Promise.all([
     Producto.find(filter).sort({ nombre: 1 }).skip(skip).limit(limit).lean(),

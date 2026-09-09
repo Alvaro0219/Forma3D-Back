@@ -3,6 +3,8 @@ import Joi from 'joi';
 
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Variable de R2: requerida en produccion, opcional (allow '') en desarrollo.
 const r2Var = Joi.string().when('NODE_ENV', {
   is: 'production',
@@ -10,15 +12,35 @@ const r2Var = Joi.string().when('NODE_ENV', {
   otherwise: Joi.string().allow('').default('')
 });
 
+// Los secretos de firma se generan con `npm run gen:secrets`. El minimo de 32 y el
+// rechazo de los placeholders evitan que un .env copiado de .env.example arranque
+// en produccion con una clave que esta publicada en el repositorio.
+const secretVar = Joi.string()
+  .min(32)
+  .pattern(/change_me/i, { invert: true })
+  .required()
+  .messages({
+    'string.min': '{{#label}} debe tener al menos 32 caracteres (usar: npm run gen:secrets)',
+    'string.pattern.invert.base': '{{#label}} sigue teniendo el valor de ejemplo: generar uno real con `npm run gen:secrets`'
+  });
+
 const schema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
   PORT: Joi.number().default(4000),
   MONGO_URL: Joi.string().uri().required(),
-  JWT_SECRET: Joi.string().min(16).required(),
+  JWT_SECRET: secretVar,
   JWT_EXPIRES_IN: Joi.string().default('1d'),
-  REFRESH_SECRET: Joi.string().min(16).required(),
+  REFRESH_SECRET: secretVar,
   REFRESH_EXPIRES_IN: Joi.string().default('7d'),
-  CORS_ORIGINS: Joi.string().allow('').default(''),
+
+  // En produccion es obligatoria: sin ella no hay forma segura de decidir que
+  // origenes se aceptan, y el default no puede ser "todos" (ver app.js).
+  CORS_ORIGINS: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().required(),
+    otherwise: Joi.string().allow('').default('')
+  }),
+
   BOOTSTRAP_ADMIN_EMAIL: Joi.string().email({ tlds: { allow: false } }).allow('').default(''),
   BOOTSTRAP_ADMIN_PASSWORD: Joi.string().allow('').default(''),
   BOOTSTRAP_ADMIN_NAME: Joi.string().allow('').default('Administrador'),
@@ -37,21 +59,41 @@ const { error, value: parsed } = schema.validate(process.env, {
   stripUnknown: false
 });
 
-if (error && process.env.NODE_ENV === 'production') {
-  console.error('Invalid environment configuration:', error.message);
+// Una config invalida nunca debe levantar el server: sin secretos validos no hay
+// autenticacion confiable. En desarrollo tambien se corta (antes solo se avisaba,
+// y el proceso seguia con los fallbacks inseguros que ya no existen).
+if (error) {
+  console.error('Configuracion de entorno invalida:');
+  for (const detail of error.details) console.error(`  - ${detail.message}`);
   process.exit(1);
-} else if (error) {
-  console.warn('Environment warning (non-production):', error.message);
 }
+
+/**
+ * Una connection string sin nombre de base ("...mongodb.net/?retryWrites=true")
+ * hace que Mongoose escriba en la base `test` por defecto. En produccion eso
+ * significa operar sobre la base equivocada sin ningun aviso.
+ */
+function assertDatabaseName(mongoUrl) {
+  const path = mongoUrl.split('?')[0].split('/')[3] || '';
+  if (!path) {
+    console.error('MONGO_URL no incluye el nombre de la base de datos.');
+    console.error('  Agregalo antes de los parametros, ej: ...mongodb.net/impresion3d_prod?retryWrites=true');
+    process.exit(1);
+  }
+  return path;
+}
+
+if (isProduction) assertDatabaseName(parsed.MONGO_URL);
 
 export const env = {
   nodeEnv: parsed.NODE_ENV,
+  isProduction,
   port: parsed.PORT,
   corsOrigins: (parsed.CORS_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean),
-  mongoUrl: parsed.MONGO_URL || 'mongodb://localhost:27017/impresion3d',
-  jwtSecret: parsed.JWT_SECRET || 'change_me_dev_secret_min16',
+  mongoUrl: parsed.MONGO_URL,
+  jwtSecret: parsed.JWT_SECRET,
   jwtExpiresIn: parsed.JWT_EXPIRES_IN,
-  refreshSecret: parsed.REFRESH_SECRET || 'change_me_dev_refresh_min16',
+  refreshSecret: parsed.REFRESH_SECRET,
   refreshExpiresIn: parsed.REFRESH_EXPIRES_IN,
   bootstrapAdmin: {
     email: parsed.BOOTSTRAP_ADMIN_EMAIL || '',

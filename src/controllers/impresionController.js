@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/response.js';
 import { AppError } from '../utils/AppError.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
+import { queryString } from '../utils/queryParams.js';
 import { Impresion } from '../models/Impresion.js';
 import { getNextSequence } from '../models/Counter.js';
 import { finalizarImpresion } from '../services/impresionService.js';
@@ -15,7 +16,8 @@ const POPULATE = [
 export const listImpresiones = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req);
   const filter = {};
-  if (req.query.filter_estado) filter.estado = req.query.filter_estado;
+  const estado = queryString(req, 'filter_estado');
+  if (estado) filter.estado = estado;
   const [items, total] = await Promise.all([
     Impresion.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).populate(POPULATE).lean(),
     Impresion.countDocuments(filter)

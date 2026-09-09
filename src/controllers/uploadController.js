@@ -8,8 +8,8 @@ import { buildImageKey, getUploadUrl } from '../services/storageService.js';
  * La validacion vive en la ruta via validate(presignSchema); aca se lee req.validated.
  */
 export const requestUploadUrl = asyncHandler(async (req, res) => {
-  const { fileName, contentType, folder, kind } = req.validated;
+  const { fileName, contentType, folder, kind, size } = req.validated;
   const key = buildImageKey(fileName, folder);
-  const { uploadUrl, publicUrl } = await getUploadUrl(key, contentType, kind);
+  const { uploadUrl, publicUrl } = await getUploadUrl(key, contentType, kind, size);
   return ok(res, { uploadUrl, publicUrl, key });
 });

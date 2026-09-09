@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ok } from '../utils/response.js';
 import { AppError } from '../utils/AppError.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
+import { queryString, queryDate } from '../utils/queryParams.js';
 import { Venta } from '../models/Venta.js';
 import { Pedido } from '../models/Pedido.js';
 import { registrarVenta } from '../services/ventaService.js';
@@ -9,11 +10,14 @@ import { registrarVenta } from '../services/ventaService.js';
 export const listVentas = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req);
   const filter = {};
-  if (req.query.filter_estado) filter.estado = req.query.filter_estado;
-  if (req.query.desde || req.query.hasta) {
+  const estado = queryString(req, 'filter_estado');
+  if (estado) filter.estado = estado;
+  const desde = queryDate(req, 'desde');
+  const hasta = queryDate(req, 'hasta');
+  if (desde || hasta) {
     filter.fecha = {};
-    if (req.query.desde) filter.fecha.$gte = new Date(req.query.desde);
-    if (req.query.hasta) filter.fecha.$lte = new Date(req.query.hasta);
+    if (desde) filter.fecha.$gte = desde;
+    if (hasta) filter.fecha.$lte = hasta;
   }
   const [items, total] = await Promise.all([
     Venta.find(filter).sort({ fecha: -1 }).skip(skip).limit(limit).populate('cliente', 'nombre').lean(),
