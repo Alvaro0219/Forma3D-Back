@@ -10,11 +10,16 @@ import { AppError } from '../utils/AppError.js';
  * (Insumo -> stock, Filamento -> pesoDisponible) y deja el movimiento historico.
  * El total se recalcula en el servidor a partir de los items.
  */
+// Las bobinas de filamento son siempre de 1kg: en un item de compra tipo Filamento,
+// "cantidad" es la cantidad de BOBINAS (y "precioUnitario" el precio de la bobina
+// completa), no gramos sueltos. Se convierte a gramos solo al impactar el stock
+// (pesoDisponible), que se mide en gramos.
+const GRAMOS_POR_BOBINA = 1000;
+
 export async function registrarCompra(payload, usuarioId = null) {
   const {
     proveedor = null,
     fecha = new Date(),
-    comprobante = '',
     items = [],
     formaPago = 'efectivo',
     observaciones = ''
@@ -48,25 +53,40 @@ export async function registrarCompra(payload, usuarioId = null) {
       // Aumentar stock si el item referencia un articulo existente
       if (item.articuloId) {
         const esFilamento = item.articuloTipo === 'Filamento';
+        const gramos = cantidad * GRAMOS_POR_BOBINA;
         await registrarMovimiento({
           articuloTipo: item.articuloTipo,
           articuloId: item.articuloId,
           articuloNombre: item.descripcion,
           tipo: 'compra',
-          cantidad, // ingreso (positivo)
+          // Filamento: cantidad de bobinas -> gramos. Insumo: cantidad tal cual.
+          cantidad: esFilamento ? gramos : cantidad,
           unidad: esFilamento ? 'g' : 'unidad',
-          referencia: comprobante ? `Compra ${comprobante}` : 'Compra',
+          referencia: 'Compra',
           refModel: 'Compra',
           usuario: usuarioId,
           session
         });
+
+        if (esFilamento) {
+          // Un mismo registro de Filamento puede acumular varias bobinas fisicas
+          // compradas en distintos momentos (y a distinto precio). "pesoOriginal"
+          // deja de ser "el peso de la bobina inicial" y pasa a ser "el total de
+          // gramos cargados hasta ahora" -- asi el % disponible nunca pasa de 100%.
+          // "precioCompra" se acumula igual, para que costoPorGramo (precioCompra /
+          // pesoOriginal) siga siendo un costo promedio correcto y no se diluya.
+          await Filamento.updateOne(
+            { _id: item.articuloId },
+            { $inc: { pesoOriginal: gramos, precioCompra: subtotal } },
+            sessOpt
+          );
+        }
       }
     }
 
     const [compra] = await Compra.create([{
       proveedor,
       fecha,
-      comprobante,
       items: compraItems,
       total,
       formaPago,

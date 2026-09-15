@@ -3,9 +3,10 @@ import { ok } from '../utils/response.js';
 import { AppError } from '../utils/AppError.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
 import { queryString, containsRegex } from '../utils/queryParams.js';
-import { Filamento } from '../models/Filamento.js';
+import { Filamento, MARCA_FILAMENTO } from '../models/Filamento.js';
 import { MovimientoStock } from '../models/MovimientoStock.js';
 import { registrarMovimiento } from '../services/stockService.js';
+import { generarIdentificadorBobina, peekIdentificadorBobina } from '../services/bobinaService.js';
 
 export const listFilamentos = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req);
@@ -38,8 +39,19 @@ export const createFilamento = asyncHandler(async (req, res) => {
   const data = { ...req.validated };
   // Si no se indica peso disponible, arranca lleno.
   if (data.pesoDisponible == null) data.pesoDisponible = data.pesoOriginal;
+  if (!data.identificadorBobina) {
+    data.identificadorBobina = await generarIdentificadorBobina(data.marca);
+  }
   const filamento = await Filamento.create(data);
   return ok(res, filamento, 201);
+});
+
+/** Previsualiza el proximo ID de bobina de una marca sin consumir la secuencia. */
+export const nextBobinaId = asyncHandler(async (req, res) => {
+  const marca = queryString(req, 'marca');
+  if (!marca) throw new AppError('Falta la marca', 400, 'VALIDATION_ERROR');
+  if (!MARCA_FILAMENTO.includes(marca)) throw new AppError('Marca invalida', 400, 'VALIDATION_ERROR');
+  return ok(res, { identificadorBobina: await peekIdentificadorBobina(marca) });
 });
 
 export const updateFilamento = asyncHandler(async (req, res) => {

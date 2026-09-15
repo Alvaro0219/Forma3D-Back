@@ -61,25 +61,31 @@ app.use('/api', (req, res) => {
 });
 
 // 9. Error handler global
+// Los rechazos de negocio (contraseña invalida, validacion, etc.) son trafico normal,
+// no bugs: se logean en una linea corta para no tapar los errores reales en el log.
+// Solo lo verdaderamente inesperado (el 500 final) se logea con el stack completo.
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-
   if (err.message === 'Origin no permitido por CORS') {
     return res.status(403).json({ success: false, error: { message: 'Origen no permitido', code: 'CORS_FORBIDDEN' } });
   }
   if (err instanceof AppError) {
+    console.warn(`[${err.status}] ${err.code}: ${err.message}`);
     return res.status(err.status).json({ success: false, error: { message: err.message, code: err.code } });
   }
   if (err.name === 'ValidationError') {
+    console.warn(`[400] VALIDATION_ERROR: ${err.message}`);
     return res.status(400).json({ success: false, error: { message: err.message, code: 'VALIDATION_ERROR' } });
   }
   if (err.code === 11000) {
+    console.warn('[409] CONFLICT: recurso duplicado');
     return res.status(409).json({ success: false, error: { message: 'Recurso duplicado', code: 'CONFLICT' } });
   }
   if (err.name === 'CastError') {
+    console.warn('[400] INVALID_ID: identificador invalido');
     return res.status(400).json({ success: false, error: { message: 'Identificador invalido', code: 'INVALID_ID' } });
   }
+  console.error('Error no manejado:', err);
   return res.status(500).json({ success: false, error: { message: 'Error interno del servidor', code: 'INTERNAL_ERROR' } });
 });
 

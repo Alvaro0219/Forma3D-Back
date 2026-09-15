@@ -1,9 +1,11 @@
 import Joi from 'joi';
-import { TIPO_FILAMENTO, ESTADO_FILAMENTO } from '../models/Filamento.js';
+import { TIPO_FILAMENTO, ESTADO_FILAMENTO, MARCA_FILAMENTO } from '../models/Filamento.js';
 
 export const createFilamentoSchema = Joi.object({
-  identificadorBobina: Joi.string().required(),
-  marca: Joi.string().allow(''),
+  // Se genera automaticamente a partir de la marca (ver bobinaService.js).
+  // Se acepta uno manual solo si el usuario lo fuerza.
+  identificadorBobina: Joi.string().allow('').optional(),
+  marca: Joi.string().valid(...MARCA_FILAMENTO).required(), // define el prefijo del ID de bobina
   tipo: Joi.string().valid(...TIPO_FILAMENTO).default('PLA'),
   color: Joi.string().allow(''),
   pesoOriginal: Joi.number().min(1).required(),
@@ -16,7 +18,10 @@ export const createFilamentoSchema = Joi.object({
 });
 
 export const updateFilamentoSchema = createFilamentoSchema
-  .fork(['identificadorBobina', 'pesoOriginal', 'precioCompra'], (s) => s.optional())
+  .fork(['pesoOriginal', 'precioCompra'], (s) => s.optional())
+  // La marca en edicion NO se restringe al catalogo: bobinas cargadas antes de este
+  // catalogo pueden tener una marca libre, y editar otro campo no debe rechazarlas.
+  .fork(['marca'], () => Joi.string().optional())
   .min(1);
 
 export const consumoFilamentoSchema = Joi.object({

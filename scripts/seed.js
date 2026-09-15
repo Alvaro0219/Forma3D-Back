@@ -160,10 +160,10 @@ async function run() {
   if (await Compra.countDocuments() === 0) {
     await registrarCompra({
       proveedor: provInsumos._id,
-      comprobante: 'FC-A-0001',
       formaPago: 'transferencia',
       items: [
-        { articuloTipo: 'Filamento', articuloId: bobinaPLA._id, descripcion: 'PLA Rojo 1kg (recarga)', cantidad: 500, precioUnitario: 12.5 },
+        // Filamento: "cantidad" es numero de bobinas (1kg c/u); "precioUnitario" el precio de la bobina completa.
+        { articuloTipo: 'Filamento', articuloId: bobinaPLA._id, descripcion: 'PLA Rojo 1kg (recarga)', cantidad: 1, precioUnitario: 12500 },
         { articuloTipo: 'Insumo', descripcion: 'Imanes 8mm x100', cantidad: 100, precioUnitario: 25 }
       ]
     }, admin._id);

@@ -14,7 +14,6 @@ const CompraItemSchema = new mongoose.Schema({
 const CompraSchema = new mongoose.Schema({
   proveedor: { type: mongoose.Schema.Types.ObjectId, ref: 'Proveedor', default: null },
   fecha: { type: Date, default: Date.now, index: true },
-  comprobante: { type: String },
   items: { type: [CompraItemSchema], default: [] },
   total: { type: Number, required: true, min: 0 },
   formaPago: { type: String, enum: FORMA_PAGO, default: 'efectivo' },

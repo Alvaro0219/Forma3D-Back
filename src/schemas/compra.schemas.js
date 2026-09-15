@@ -12,7 +12,6 @@ const itemSchema = Joi.object({
 export const createCompraSchema = Joi.object({
   proveedor: Joi.string().allow(null, ''),
   fecha: Joi.date(),
-  comprobante: Joi.string().allow(''),
   items: Joi.array().items(itemSchema).min(1).required(),
   formaPago: Joi.string().valid(...FORMA_PAGO).default('efectivo'),
   observaciones: Joi.string().allow('')
