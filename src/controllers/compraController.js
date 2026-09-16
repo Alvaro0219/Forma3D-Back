@@ -4,7 +4,7 @@ import { AppError } from '../utils/AppError.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
 import { queryDate } from '../utils/queryParams.js';
 import { Compra } from '../models/Compra.js';
-import { registrarCompra } from '../services/compraService.js';
+import { registrarCompra, actualizarCompra } from '../services/compraService.js';
 
 export const listCompras = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req);
@@ -32,4 +32,9 @@ export const getCompra = asyncHandler(async (req, res) => {
 export const createCompra = asyncHandler(async (req, res) => {
   const compra = await registrarCompra(req.validated, req.user?.id || null);
   return ok(res, compra, 201);
+});
+
+export const updateCompra = asyncHandler(async (req, res) => {
+  const compra = await actualizarCompra(req.params.id, req.validated, req.user?.id || null);
+  return ok(res, compra);
 });

@@ -22,7 +22,6 @@ const ProductoSchema = new mongoose.Schema({
   descripcion: { type: String },
   categoria: { type: String, trim: true, index: true },
   material: { type: String, trim: true, index: true },
-  colores: [{ type: String, trim: true }],
   fotoPrincipal: { type: String },
   fotos: [{ type: String }],
 

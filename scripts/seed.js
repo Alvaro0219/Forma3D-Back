@@ -119,19 +119,19 @@ async function run() {
   // ─── Productos ──────────────────────────────────────────
   const prodLlavero = await upsert(Producto, { sku: 'LL-001' }, {
     nombre: 'Llavero personalizado', sku: 'LL-001', descripcion: 'Llavero PLA con nombre a elección',
-    categoria: 'Llaveros', material: 'PLA', colores: ['Rojo', 'Negro', 'Azul'],
+    categoria: 'Llaveros', material: 'PLA',
     precioVenta: 1500, stock: 30, stockMinimo: 5, pesoInterno: 12, tiempoImpresion: 25,
     costoFabricacion: 500, visibleEnTienda: true
   });
   const prodMate = await upsert(Producto, { sku: 'MT-001' }, {
     nombre: 'Mate 3D', sku: 'MT-001', descripcion: 'Mate impreso en PETG, apto uso diario',
-    categoria: 'Utilitario', material: 'PETG', colores: ['Negro'],
+    categoria: 'Utilitario', material: 'PETG',
     precioVenta: 6000, stock: 8, stockMinimo: 3, pesoInterno: 90, tiempoImpresion: 180,
     costoFabricacion: 2200, visibleEnTienda: true
   });
   const prodMaceta = await upsert(Producto, { sku: 'MC-001' }, {
     nombre: 'Maceta geométrica', sku: 'MC-001', descripcion: 'Maceta decorativa low-poly',
-    categoria: 'Decoracion', material: 'PLA', colores: ['Blanco', 'Verde'],
+    categoria: 'Decoracion', material: 'PLA',
     precioVenta: 3500, stock: 2, stockMinimo: 4, pesoInterno: 60, tiempoImpresion: 120,
     costoFabricacion: 1300, visibleEnTienda: true, disponibilidadTienda: 'auto'
   });

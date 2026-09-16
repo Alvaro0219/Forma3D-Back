@@ -69,6 +69,32 @@ export const updateImpresion = asyncHandler(async (req, res) => {
   return ok(res, await withPopulate(imp._id));
 });
 
+/**
+ * Duplica una impresion (misma plancha impresa varias veces): copia producto,
+ * impresora, bobinas y piezas, pero como un trabajo NUEVO en "pendiente" -- pasa
+ * por su propio consumo/costo/descuento de stock al marcarla terminada, no copia
+ * el consumo ya registrado de la original.
+ */
+export const duplicarImpresion = asyncHandler(async (req, res) => {
+  const origen = await Impresion.findById(req.params.id);
+  if (!origen) throw new AppError('Impresion no encontrada', 404, 'NOT_FOUND');
+
+  const numero = await getNextSequence('impresion');
+  const copia = await Impresion.create({
+    numero,
+    producto: origen.producto,
+    impresora: origen.impresora,
+    filamentos: origen.filamentos.map((f) => ({ filamento: f.filamento, gramos: f.gramos })),
+    cantidadPiezas: origen.cantidadPiezas,
+    tiempo: origen.tiempo,
+    notas: origen.notas,
+    estado: 'pendiente',
+    usuario: req.user?.id || null
+  });
+
+  return ok(res, await withPopulate(copia._id), 201);
+});
+
 export const deleteImpresion = asyncHandler(async (req, res) => {
   const imp = await Impresion.findByIdAndDelete(req.params.id);
   if (!imp) throw new AppError('Impresion no encontrada', 404, 'NOT_FOUND');

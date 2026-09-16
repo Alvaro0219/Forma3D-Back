@@ -15,7 +15,6 @@ export const createProductoSchema = Joi.object({
   categoria: Joi.string().required(), // requerida: define el prefijo del SKU
   descripcion: Joi.string().allow(''),
   material: Joi.string().allow(''),
-  colores: Joi.array().items(Joi.string()).default([]),
   fotoPrincipal: Joi.string().allow(''),
   fotos: Joi.array().items(Joi.string()).default([]),
   precioVenta: Joi.number().min(0).required(),

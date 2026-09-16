@@ -16,3 +16,6 @@ export const createCompraSchema = Joi.object({
   formaPago: Joi.string().valid(...FORMA_PAGO).default('efectivo'),
   observaciones: Joi.string().allow('')
 });
+
+// La edicion reenvia la compra completa (no un patch parcial): mismo contrato que crear.
+export const updateCompraSchema = createCompraSchema;

@@ -5,6 +5,7 @@ import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
 import { queryString, containsRegex } from '../utils/queryParams.js';
 import { Producto } from '../models/Producto.js';
 import { Configuracion } from '../models/Configuracion.js';
+import { Filamento } from '../models/Filamento.js';
 
 const DISPONIBILIDAD_TEXTO = {
   disponible: 'Disponible',
@@ -39,7 +40,6 @@ function toPublic(producto, mostrarDisp, umbral = 0) {
     descripcion: producto.descripcion,
     categoria: producto.categoria,
     material: producto.material,
-    colores: producto.colores,
     precio: producto.precioVenta,
     fotoPrincipal: producto.fotoPrincipal,
     fotos: producto.fotos,
@@ -88,9 +88,12 @@ export const getProductoPublico = asyncHandler(async (req, res) => {
 /** Info publica de la tienda: nombre, filtros disponibles, whatsapp configurado. */
 export const getTiendaInfo = asyncHandler(async (req, res) => {
   const cfg = await Configuracion.getSingleton();
-  const [categorias, materiales] = await Promise.all([
+  const [categorias, materiales, coloresDisponibles] = await Promise.all([
     Producto.distinct('categoria', { visibleEnTienda: true, isActive: { $ne: false } }),
-    Producto.distinct('material', { visibleEnTienda: true, isActive: { $ne: false } })
+    Producto.distinct('material', { visibleEnTienda: true, isActive: { $ne: false } }),
+    // Colores que realmente hay en stock (no los que carga cada producto a mano):
+    // solo el color, nunca marca/precio/proveedor/peso de la bobina.
+    Filamento.distinct('color', { pesoDisponible: { $gt: 0 } })
   ]);
   return ok(res, {
     nombreNegocio: cfg.nombreNegocio,
@@ -98,7 +101,8 @@ export const getTiendaInfo = asyncHandler(async (req, res) => {
     moneda: cfg.moneda,
     whatsappConfigurado: !!cfg.whatsappNumero,
     categorias: categorias.filter(Boolean),
-    materiales: materiales.filter(Boolean)
+    materiales: materiales.filter(Boolean),
+    coloresDisponibles: coloresDisponibles.filter(Boolean)
   });
 });
 
