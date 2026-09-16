@@ -1,4 +1,4 @@
-import { S3Client, DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, DeleteObjectCommand, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import { env } from '../config/env.js';
@@ -73,6 +73,33 @@ export async function getUploadUrl(key, contentType, kind = 'image', size = 0) {
 
 export async function deleteImage(key) {
   await s3.send(new DeleteObjectCommand({ Bucket: env.r2BucketName, Key: key }));
+}
+
+/** Arma el header Content-Disposition con soporte para nombres con tildes/ñ (RFC 5987). */
+function buildContentDisposition(filename) {
+  const ascii = filename.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, "'");
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
+/**
+ * URL firmada de DESCARGA (GET), de corta duracion: fuerza al navegador a guardar
+ * el archivo con `filename` en vez del nombre interno (UUID) de la key en R2.
+ * No modifica el objeto guardado, solo la respuesta de esta descarga puntual.
+ */
+export async function getDownloadUrl(key, filename) {
+  const command = new GetObjectCommand({
+    Bucket: env.r2BucketName,
+    Key: key,
+    ResponseContentDisposition: buildContentDisposition(filename)
+  });
+  return getSignedUrl(s3, command, { expiresIn: 120 });
+}
+
+/** Recupera la key de R2 a partir de la URL publica guardada en el documento. */
+export function keyFromPublicUrl(url) {
+  if (!url) return null;
+  const prefix = `${env.r2PublicUrl}/`;
+  return url.startsWith(prefix) ? url.slice(prefix.length) : null;
 }
 
 export { MAX_SIZE_BYTES, MAX_MODEL_SIZE_BYTES, ALLOWED_TYPES, ALLOWED_MODEL_EXT };
